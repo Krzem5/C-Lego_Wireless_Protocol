@@ -1,4 +1,5 @@
 #include <lwp.h>
+#include <lwp_drivers.h>
 #include <stdio.h>
 
 
@@ -17,11 +18,15 @@ int main(int argc,const char** argv){
 	}
 	lwp_device_t* d=*dl->dt;
 	lwp_free_device_list(dl);
-	getchar();
+	lwp_wait_for_ports(d,1,50);
+	lwp_driver_led_light_init(d,50);
+	lwp_driver_led_light_set_color(d,50,0,255,0);
 	for (uint8_t i=0;i<d->ports.l;i++){
 		if ((d->ports.dt+i)->f&LWP_DEVICE_PORT_ATTACHED){
 			printf("Port[%u]: %.2x %.4x\n",i,(d->ports.dt+i)->f,(d->ports.dt+i)->t);
 		}
 	}
+	getchar();
+	lwp_driver_led_light_set_color(d,50,255,0,255);
 	return 0;
 }

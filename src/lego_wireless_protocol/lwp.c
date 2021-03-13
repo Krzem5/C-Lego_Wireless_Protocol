@@ -1,5 +1,6 @@
 #include <lwp.h>
 #include <ble_lib.h>
+#include <windows.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,29 +22,6 @@ struct _f_dev_cb_arg{
 	lwp_device_found_t cb;
 	lwp_device_list_t* l;
 };
-
-
-
-void _send_data(ble_connected_device_characteristics_t* c,uint8_t* dt,uint16_t dtl){
-	uint16_t l=dtl+(dtl>=127?3:2);
-	uint8_t* n_bf=malloc(l*sizeof(uint8_t));
-	*n_bf=(uint8_t)(l&0x7f);
-	uint16_t i=1;
-	if (l>127){
-		*(n_bf+1)=(uint8_t)(l>>7);
-		i++;
-	}
-	*(n_bf+i)=0;
-	i++;
-	uint8_t off=(uint8_t)i;
-	while (dtl){
-		*(n_bf+i)=*(dt+i-off);
-		i++;
-		dtl--;
-	}
-	ble_lib_write_characteristic(c,n_bf,l);
-	free(n_bf);
-}
 
 
 
@@ -78,12 +56,15 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 						d->ports.l++;
 					}
 				}
-				(d->ports.dt+id)->f|=LWP_DEVICE_PORT_ATTACHED;
+				(d->ports.dt+id)->_drv_dt=NULL;
+				(d->ports.dt+id)->_cnt=0;
+				(d->ports.dt+id)->f=LWP_DEVICE_PORT_ATTACHED;
 				(d->ports.dt+id)->t=pt;
 				if (ev==1){
 					printf("Attached: {Port ID: %u, Type: %.4x, HR: %.8x, SR: %.8x}\n",id,pt,((uint32_t)*(dt.bf+7)<<24)|((uint32_t)*(dt.bf+6)<<16)|((uint32_t)*(dt.bf+5)<<8)|*(dt.bf+4),((uint32_t)*(dt.bf+11)<<24)|((uint32_t)*(dt.bf+10)<<16)|((uint32_t)*(dt.bf+9)<<8)|*(dt.bf+8));
+					(d->ports.dt+id)->_cnt++;
 					uint8_t bf[3]={0x21,id,0x01};
-					_send_data(d->_dc,bf,sizeof(bf));
+					lwp_send_raw_data(d,bf,sizeof(bf));
 				}
 				else{
 					printf("Virtual Attached: {Port ID: %u, Type: %.4x, PortA: %u, PortB: %u}\n",id,pt,*(dt.bf+4),*(dt.bf+5));
@@ -103,31 +84,32 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 					(d->ports.dt+id)->f|=(*(dt.bf+2))<<2;
 					if ((d->ports.dt+id)->f&LWP_DEVICE_PORT_COMBINABLE){
 						uint8_t bf[3]={0x21,id,0x02};
-						_send_data(d->_dc,bf,sizeof(bf));
+						lwp_send_raw_data(d,bf,sizeof(bf));
 					}
-					(d->ports.dt+id)->modes.l=*(dt.bf+3);
-					for (uint8_t i=0;i<(d->ports.dt+id)->modes.l;i++){
+					(d->ports.dt+id)->modes.f|=SET_LWP_DEVICE_PORT_MODE_COUNT(*(dt.bf+3));
+					for (uint8_t i=0;i<*(dt.bf+3);i++){
 						(d->ports.dt+id)->modes.ml[i].f=0;
 					}
 					uint16_t v=((uint16_t)*(dt.bf+5)<<8)|(*(dt.bf+4));
 					uint8_t bf[4]={0x22,id,0x00};
 					while (v){
 						if (v&1){
+							(d->ports.dt+id)->_cnt+=7;
 							(d->ports.dt+id)->modes.ml[bf[2]].f|=LWP_DEVICE_PORT_MODE_INPUT;
 							bf[3]=0x00;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x01;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x02;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x03;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x04;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x05;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x80;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 						}
 						v>>=1;
 						bf[2]++;
@@ -136,31 +118,31 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 					bf[2]=0;
 					while (v){
 						if (v&1){
+							(d->ports.dt+id)->_cnt+=7;
 							(d->ports.dt+id)->modes.ml[bf[2]].f|=LWP_DEVICE_PORT_MODE_OUTPUT;
 							bf[3]=0x00;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x01;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x02;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x03;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x04;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x05;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 							bf[3]=0x80;
-							_send_data(d->_dc,bf,sizeof(bf));
+							lwp_send_raw_data(d,bf,sizeof(bf));
 						}
 						v>>=1;
 						bf[2]++;
 					}
 				}
 				else{
-					(d->ports.dt+id)->modes.cc=0;
+					uint8_t cc=0;
 					dt.bf+=2;
 					dt.l-=2;
-					if (dt.l%2)
 					for (uint8_t i=0;i<8;i++){
 						if (!dt.l){
 							break;
@@ -170,12 +152,14 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 							break;
 						}
 						printf("Port Mode Combinations: {Port ID: %u, Combination: %x}\n",id,v);
-						(d->ports.dt+id)->modes.c[(d->ports.dt+id)->modes.cc]=v;
-						(d->ports.dt+id)->modes.cc++;
+						(d->ports.dt+id)->modes.c[cc]=v;
+						cc++;
 						dt.bf+=2;
 						dt.l-=2;
 					}
+					(d->ports.dt+id)->modes.f|=SET_LWP_DEVICE_PORT_COMBINATION_COUNT(cc);
 				}
+				(d->ports.dt+id)->_cnt--;
 				break;
 			}
 		case 0x44:
@@ -296,6 +280,7 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 					default:
 						printf("Unknown Extended Port Info Type '%u'!\n",t);
 				}
+				(d->ports.dt+id)->_cnt--;
 				break;
 			}
 		default:
@@ -376,6 +361,63 @@ lwp_device_list_t* lwp_find_devices(uint32_t tm,lwp_device_found_t cb){
 	arg.l->dt=malloc(1);
 	ble_lib_enum_devices(tm,_f_dev_cb,&arg);
 	return arg.l;
+}
+
+
+
+void lwp_send_raw_data(lwp_device_t* d,uint8_t* dt,uint16_t dtl){
+	uint16_t l=dtl+(dtl>=127?3:2);
+	uint8_t* n_bf=malloc(l*sizeof(uint8_t));
+	*n_bf=(uint8_t)(l&0x7f);
+	uint16_t i=1;
+	if (l>127){
+		*(n_bf+1)=(uint8_t)(l>>7);
+		i++;
+	}
+	*(n_bf+i)=0;
+	i++;
+	uint8_t off=(uint8_t)i;
+	while (dtl){
+		*(n_bf+i)=*(dt+i-off);
+		i++;
+		dtl--;
+	}
+	ble_lib_write_characteristic(d->_dc,n_bf,l);
+	free(n_bf);
+}
+
+
+
+void lwp_wait_for_ports(lwp_device_t* d,uint8_t c,...){
+	if (!c){
+		for (uint8_t i=0;i<d->ports.l;i++){
+			if ((d->ports.dt+i)->f&LWP_DEVICE_PORT_ATTACHED){
+				while ((d->ports.dt+i)->_cnt){
+					Sleep(10);
+				}
+			}
+		}
+		return;
+	}
+	va_list va;
+	va_start(va,c);
+	while (c){
+		uint8_t p=va_arg(va,uint8_t);
+		while (!((d->ports.dt+p)->f&LWP_DEVICE_PORT_ATTACHED)||(d->ports.dt+p)->_cnt){
+			Sleep(10);
+		}
+		c--;
+	}
+	va_end(va);
+}
+
+
+
+lwp_device_port_t* lwp_get_port(lwp_device_t* d,uint8_t p){
+	if (p<=d->ports.l){
+		return NULL;
+	}
+	return d->ports.dt+p;
 }
 
 

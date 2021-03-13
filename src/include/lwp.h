@@ -24,6 +24,10 @@
 #define LWP_DEVICE_PORT_INPUT 8
 #define LWP_DEVICE_PORT_COMBINABLE 16
 #define LWP_DEVICE_PORT_SYNCHRONIZABLE 32
+#define GET_LWP_DEVICE_PORT_MODE_COUNT(f) (((f)&15)+1)
+#define GET_LWP_DEVICE_PORT_COMBINATION_COUNT(f) ((f)>>4)
+#define SET_LWP_DEVICE_PORT_MODE_COUNT(c) ((c)-1)
+#define SET_LWP_DEVICE_PORT_COMBINATION_COUNT(c) ((c)<<4)
 
 #define LWP_DEVICE_PORT_MODE_INPUT 1
 #define LWP_DEVICE_PORT_MODE_INPUT_MAPPING_DISCRETE 2
@@ -42,6 +46,8 @@
 #define LWP_DEVICE_PORT_MODE_DATASET_TYPE_32BYTE 8192
 #define LWP_DEVICE_PORT_MODE_DATASET_TYPE_FLOAT 12288
 #define GET_LWP_DEVICE_PORT_MODE_DATASET_TYPE(f) (((f)>>12)&3)
+
+#define LWP_WAIT_FOR_ALL_PORTS 0
 
 
 
@@ -71,8 +77,7 @@ typedef struct __LWP_DEVICE_PORT_MODE{
 
 
 typedef struct __LWP_DEVICE_PORT_MODES{
-	uint8_t l;
-	uint8_t cc;
+	uint8_t f;
 	uint16_t c[8];
 	lwp_device_port_mode_t ml[16];
 } lwp_device_port_mode_list_t;
@@ -80,7 +85,9 @@ typedef struct __LWP_DEVICE_PORT_MODES{
 
 
 typedef struct __LWP_DEVICE_PORT{
+	void* _drv_dt;
 	uint8_t f;
+	uint8_t _cnt;
 	uint16_t t;
 	lwp_device_port_mode_list_t modes;
 } lwp_device_port_t;
@@ -117,6 +124,18 @@ typedef uint8_t (*lwp_device_found_t)(lwp_device_data_t* dt);
 
 
 lwp_device_list_t* lwp_find_devices(uint32_t tm,lwp_device_found_t cb);
+
+
+
+void lwp_send_raw_data(lwp_device_t* d,uint8_t* dt,uint16_t dtl);
+
+
+
+void lwp_wait_for_ports(lwp_device_t* d,uint8_t c,...);
+
+
+
+lwp_device_port_t* lwp_get_port(lwp_device_t* d,uint8_t p);
 
 
 
