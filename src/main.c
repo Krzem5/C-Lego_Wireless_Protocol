@@ -21,6 +21,7 @@ int main(int argc,const char** argv){
 	lwp_free_device_list(dl);
 	lwp_wait_for_ports(d,2,50,98);
 	lwp_driver_led_light_set_color(d,50,0,255,0);
+	lwp_driver_gyro_setup(d,98,2);
 	for (uint8_t i=0;i<d->ports.l;i++){
 		if ((d->ports.dt+i)->f&LWP_DEVICE_PORT_ATTACHED){
 			printf("Port[%u]: %.2x %.4x %u\n",i,(d->ports.dt+i)->f,(d->ports.dt+i)->t,(d->ports.dt+i)->_cnt);

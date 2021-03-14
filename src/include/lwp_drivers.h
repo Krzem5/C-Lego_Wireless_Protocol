@@ -17,6 +17,10 @@ void _lwp_driver_gyro_init(lwp_device_t* d,uint8_t p);
 
 
 
+void lwp_driver_gyro_setup(lwp_device_t* d,uint8_t p,uint32_t ul);
+
+
+
 void _lwp_driver_gyro_update(lwp_device_t* d,uint8_t p,uint32_t f,float tm,void* bf);
 
 
