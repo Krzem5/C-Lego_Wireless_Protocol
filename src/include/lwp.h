@@ -24,7 +24,7 @@
 #define LWP_DEVICE_PORT_INPUT 8
 #define LWP_DEVICE_PORT_COMBINABLE 16
 #define LWP_DEVICE_PORT_SYNCHRONIZABLE 32
-#define GET_LWP_DEVICE_PORT_MODE_COUNT(f) (((f)&15)+1)
+#define GET_LWP_DEVICE_PORT_MODE_COUNT(f) (((f)&0xf)+1)
 #define GET_LWP_DEVICE_PORT_COMBINATION_COUNT(f) ((f)>>4)
 #define SET_LWP_DEVICE_PORT_MODE_COUNT(c) ((c)-1)
 #define SET_LWP_DEVICE_PORT_COMBINATION_COUNT(c) ((c)<<4)
@@ -163,7 +163,7 @@ typedef struct __LWP_DEVICE_LIST{
 
 
 typedef void (*lwp_driver_init_func)(lwp_device_t* d,uint8_t p);
-typedef void (*lwp_driver_update_func)(lwp_device_t* d,uint8_t p,...);
+typedef void (*lwp_driver_update_func)(lwp_device_t* d,uint8_t p,uint32_t f,float tm,void* bf);
 typedef void (*lwp_driver_deinit_func)(lwp_device_t* d,uint8_t p);
 
 

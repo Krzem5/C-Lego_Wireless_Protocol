@@ -295,7 +295,7 @@ _found_drv:
 						printf("Unknown Extended Port Info Type '%u'!\n",t);
 				}
 				if ((d->ports.dt+id)->_cnt==1){
-					for (uint8_t i=0;i<sizeof(LWP_DRIVERS);i++){
+					for (uint8_t i=0;i<sizeof(LWP_DRIVERS)/sizeof(lwp_driver_t);i++){
 						if (LWP_DRIVERS[i].id==(d->ports.dt+id)->t){
 							(d->ports.dt+id)->_drv_id=i;
 							goto _found_drv2;
@@ -319,6 +319,8 @@ _found_drv2:
 					printf("Recived Data a Non-Existent Port (%u)!\n",id);
 					break;
 				}
+				dt.bf++;
+				l--;
 				if (LWP_DRIVERS[(d->ports.dt+id)->_drv_id].update&&(d->ports.dt+id)->sm){
 					unsigned long mi;
 					_BitScanForward(&mi,(d->ports.dt+id)->sm);
@@ -326,18 +328,49 @@ _found_drv2:
 						printf("Multiple Modes Selected!\n");
 					}
 					else{
-						const uint64_t DATASET_TYPE_SIZE[3]={sizeof(uint8_t),sizeof(uint16_t),sizeof(uint32_t)};
-						dt.bf++;
-						l--;
+						const uint64_t DATASET_TYPE_SIZE[4]={sizeof(int8_t),sizeof(int16_t),sizeof(int32_t),sizeof(float)};
 						uint8_t dt_t=GET_LWP_DEVICE_PORT_MODE_DATASET_TYPE((d->ports.dt+id)->ml[mi].f);
 						uint8_t dt_l=(d->ports.dt+id)->ml[mi]._dtl;
-						printf("Message Data: [%u, %u (%llu), %u] ",l,dt_t,DATASET_TYPE_SIZE[dt_t],dt_l);
 						void* bf=malloc(dt_l*DATASET_TYPE_SIZE[dt_t]);
-						for (uint32_t i=0;i<l;i++){
-							printf("%.2hhx",*(dt.bf+i));
+						switch (dt_t){
+							case 0:
+								{
+									int8_t* ptr=(int8_t*)bf;
+									while (dt_l){
+										*ptr=(int8_t)*((int8_t*)dt.bf);
+										dt.bf+=sizeof(int8_t);
+										ptr++;
+										dt_l--;
+									}
+									break;
+								}
+							case 1:
+								{
+									int16_t* ptr=(int16_t*)bf;
+									while (dt_l){
+										*ptr=(int16_t)*((int16_t*)dt.bf);
+										dt.bf+=sizeof(int16_t);
+										ptr++;
+										dt_l--;
+									}
+									break;
+								}
+							case 2:
+								{
+									int32_t* ptr=(int32_t*)bf;
+									while (dt_l){
+										*ptr=(int32_t)*((int32_t*)dt.bf);
+										dt.bf+=sizeof(int32_t);
+										ptr++;
+										dt_l--;
+									}
+									break;
+								}
+							default:
+								printf("Parsing of 'FLOAT' Type not Implemented!\n");
+								break;
 						}
-						putchar('\n');
-						LWP_DRIVERS[(d->ports.dt+id)->_drv_id].update(d,id,bf);
+						LWP_DRIVERS[(d->ports.dt+id)->_drv_id].update(d,id,((uint32_t)dt_t<<16)|((uint32_t)dt_l<<8)|mi,dt.tm/1e3f,bf);
 						free(bf);
 					}
 				}
@@ -470,7 +503,7 @@ void lwp_wait_for_ports(lwp_device_t* d,uint8_t c,...){
 	va_start(va,c);
 	while (c){
 		uint8_t p=va_arg(va,uint8_t);
-		while (!((d->ports.dt+p)->f&LWP_DEVICE_PORT_ATTACHED)||(d->ports.dt+p)->_cnt){
+		while (p>=d->ports.l||!((d->ports.dt+p)->f&LWP_DEVICE_PORT_ATTACHED)||(d->ports.dt+p)->_cnt){
 			Sleep(10);
 		}
 		c--;
