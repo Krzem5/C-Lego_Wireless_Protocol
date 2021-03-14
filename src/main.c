@@ -12,21 +12,21 @@ uint8_t dev_f_cb(lwp_device_data_t* dt){
 
 
 int main(int argc,const char** argv){
+	printf("%llu\n",sizeof(lwp_device_port_t));
 	lwp_device_list_t* dl=lwp_find_devices(5000,dev_f_cb);
 	for (uint32_t i=0;i<dl->l;i++){
 		printf("Device:\n  Address: %llx\n  Type: %.2hhx\n",(*(dl->dt+i))->addr,(*(dl->dt+i))->t);
 	}
 	lwp_device_t* d=*dl->dt;
 	lwp_free_device_list(dl);
-	lwp_wait_for_ports(d,1,50);
-	lwp_driver_led_light_init(d,50);
+	lwp_wait_for_ports(d,2,50,98);
 	lwp_driver_led_light_set_color(d,50,0,255,0);
 	for (uint8_t i=0;i<d->ports.l;i++){
 		if ((d->ports.dt+i)->f&LWP_DEVICE_PORT_ATTACHED){
-			printf("Port[%u]: %.2x %.4x\n",i,(d->ports.dt+i)->f,(d->ports.dt+i)->t);
+			printf("Port[%u]: %.2x %.4x %u\n",i,(d->ports.dt+i)->f,(d->ports.dt+i)->t,(d->ports.dt+i)->_cnt);
 		}
 	}
 	getchar();
-	lwp_driver_led_light_set_color(d,50,255,0,255);
+	lwp_free_device(d,LWP_DEVICE_FREE_SHUTDOWN);
 	return 0;
 }
