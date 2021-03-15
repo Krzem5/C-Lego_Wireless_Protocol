@@ -60,8 +60,18 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 				}
 				(d->ports.dt+id)->_drv_dt=NULL;
 				(d->ports.dt+id)->_cnt=0;
-				(d->ports.dt+id)->_drv_id=UINT8_MAX;
-				(d->ports.dt+id)->f=LWP_DEVICE_PORT_ATTACHED;
+				(d->ports.dt+id)->f=0;
+				for (uint8_t i=0;i<sizeof(LWP_DRIVERS)/sizeof(lwp_driver_t);i++){
+					if (LWP_DRIVERS[i].id==pt){
+						(d->ports.dt+id)->_drv_id=i;
+						(d->ports.dt+id)->f|=LWP_DEVICE_PORT_DRIVER;
+						break;
+					}
+				}
+				if (!(d->ports.dt+id)->f){
+					printf("No Driver for type '%.4x'!\n",pt);
+				}
+				(d->ports.dt+id)->f|=LWP_DEVICE_PORT_ATTACHED;
 				(d->ports.dt+id)->sm=1;
 				(d->ports.dt+id)->mf=0;
 				(d->ports.dt+id)->t=pt;
@@ -163,21 +173,8 @@ void _c_notif_cb(ble_characteristic_notification_data_t dt,void* arg){
 					}
 					(d->ports.dt+id)->mf|=SET_LWP_DEVICE_PORT_COMBINATION_COUNT(cc);
 				}
-
-				if ((d->ports.dt+id)->_cnt==1){
-					for (uint8_t i=0;i<sizeof(LWP_DRIVERS);i++){
-						if (LWP_DRIVERS[i].id==(d->ports.dt+id)->t){
-							(d->ports.dt+id)->_drv_id=i;
-							goto _found_drv;
-						}
-					}
-					printf("No Driver for type '%.4x'!\n",(d->ports.dt+id)->t);
-					(d->ports.dt+id)->_cnt--;
-					break;
-_found_drv:
-					if (LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init){
-						LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init(d,id);
-					}
+				if ((d->ports.dt+id)->_cnt==1&&(d->ports.dt+id)->f&LWP_DEVICE_PORT_DRIVER&&LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init){
+					LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init(d,id);
 				}
 				(d->ports.dt+id)->_cnt--;
 				break;
@@ -286,7 +283,6 @@ _found_drv:
 								(d->ports.dt+id)->ml[m].f|=LWP_DEVICE_PORT_MODE_DATASET_TYPE_32BYTE;
 							}
 							else{
-								printf("Warning: Unimplemented Dataset Type 'FLOAT' (3)!\n");
 								(d->ports.dt+id)->ml[m].f|=LWP_DEVICE_PORT_MODE_DATASET_TYPE_FLOAT;
 							}
 							break;
@@ -294,20 +290,8 @@ _found_drv:
 					default:
 						printf("Unknown Extended Port Info Type '%u'!\n",t);
 				}
-				if ((d->ports.dt+id)->_cnt==1){
-					for (uint8_t i=0;i<sizeof(LWP_DRIVERS)/sizeof(lwp_driver_t);i++){
-						if (LWP_DRIVERS[i].id==(d->ports.dt+id)->t){
-							(d->ports.dt+id)->_drv_id=i;
-							goto _found_drv2;
-						}
-					}
-					printf("No Driver for type '%.4x'!\n",(d->ports.dt+id)->t);
-					(d->ports.dt+id)->_cnt--;
-					break;
-_found_drv2:
-					if (LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init){
-						LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init(d,id);
-					}
+				if ((d->ports.dt+id)->_cnt==1&&(d->ports.dt+id)->f&LWP_DEVICE_PORT_DRIVER&&LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init){
+					LWP_DRIVERS[(d->ports.dt+id)->_drv_id].init(d,id);
 				}
 				(d->ports.dt+id)->_cnt--;
 				break;
@@ -366,9 +350,17 @@ _found_drv2:
 									}
 									break;
 								}
-							default:
-								printf("Parsing of 'FLOAT' Type not Implemented!\n");
-								break;
+							case 4:
+								{
+									float* ptr=(float*)bf;
+									while (dt_l){
+										*ptr=(float)*((float*)dt.bf);
+										dt.bf+=sizeof(float);
+										ptr++;
+										dt_l--;
+									}
+									break;
+								}
 						}
 						LWP_DRIVERS[(d->ports.dt+id)->_drv_id].update(d,id,((uint32_t)dt_t<<16)|((uint32_t)dt_l<<8)|mi,dt.tm/1e3f,bf);
 						free(bf);
@@ -377,7 +369,7 @@ _found_drv2:
 				break;
 			}
 		default:
-			printf("Unknown Message: [%u, %u] ",l,t);
+			printf("Unknown Message: [%u, %#.2hhx] ",l,t);
 			for (uint32_t i=0;i<l;i++){
 				printf("%.2hhx",*(dt.bf+i));
 			}
@@ -514,7 +506,7 @@ void lwp_wait_for_ports(lwp_device_t* d,uint8_t c,...){
 
 
 lwp_device_port_t* lwp_get_port(lwp_device_t* d,uint8_t p){
-	if (p<=d->ports.l){
+	if (p>=d->ports.l){
 		return NULL;
 	}
 	return d->ports.dt+p;
@@ -522,9 +514,50 @@ lwp_device_port_t* lwp_get_port(lwp_device_t* d,uint8_t p){
 
 
 
+const char* lwp_get_port_string(lwp_device_t* d,uint8_t p){
+	if (p>=d->ports.l||!((d->ports.dt+p)->f&LWP_DEVICE_PORT_ATTACHED)){
+		return "<Empty>";
+	}
+	return ((d->ports.dt+p)->f&LWP_DEVICE_PORT_DRIVER?LWP_DRIVERS[(d->ports.dt+p)->_drv_id].nm:"<No Driver>");
+}
+
+
+
 void lwp_setup_port(lwp_device_t* d,uint8_t p,uint8_t m,uint32_t di,uint8_t ne){
 	(d->ports.dt+p)->sm=1<<m;
-	uint8_t bf[8]={0x41,p,m,di&0xff,(di>>8)&0xff,(di>>16)&0xff,di>>24,ne};
+	uint8_t bf[8]={LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_SINGLE,p,m,di&0xff,(di>>8)&0xff,(di>>16)&0xff,di>>24,ne};
+	lwp_send_raw_data(d,bf,sizeof(bf));
+}
+
+
+
+void lwp_setup_port_mutiple(lwp_device_t* d,uint8_t p,uint8_t c,...){
+	uint8_t bf[3]={LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_COMBINED,p,0x02};
+	lwp_send_raw_data(d,bf,sizeof(bf));
+	va_list va;
+	va_start(va,c);
+	(d->ports.dt+p)->sm=0;
+	uint8_t* bf2=malloc((4+c)*sizeof(uint8_t));
+	*bf2=LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_COMBINED;
+	*(bf2+1)=p;
+	*(bf2+2)=0x01;
+	*(bf2+3)=0x00;
+	uint16_t bf2_sz=4+c;
+	uint8_t* bf2p=bf2+4;
+	while (c){
+		uint8_t m=va_arg(va,uint8_t);
+		uint8_t di=va_arg(va,uint32_t);
+		(d->ports.dt+p)->sm|=1<<m;
+		uint8_t bf3[8]={LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_SINGLE,p,m,di&0xff,(di>>8)&0xff,(di>>16)&0xff,di>>24,va_arg(va,uint8_t)};
+		lwp_send_raw_data(d,bf3,sizeof(bf3));
+		c--;
+		*bf2p=0/***/;
+		bf2p++;
+	}
+	va_end(va);
+	lwp_send_raw_data(d,bf2,bf2_sz);
+	free(bf2);
+	bf[2]=0x03;
 	lwp_send_raw_data(d,bf,sizeof(bf));
 }
 

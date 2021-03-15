@@ -24,6 +24,8 @@
 #define LWP_DEVICE_PORT_INPUT 8
 #define LWP_DEVICE_PORT_COMBINABLE 16
 #define LWP_DEVICE_PORT_SYNCHRONIZABLE 32
+#define LWP_DEVICE_PORT_DRIVER 64
+
 #define GET_LWP_DEVICE_PORT_MODE_COUNT(f) (((f)&0xf)+1)
 #define GET_LWP_DEVICE_PORT_COMBINATION_COUNT(f) ((f)>>4)
 #define SET_LWP_DEVICE_PORT_MODE_COUNT(c) ((c)-1)
@@ -202,7 +204,15 @@ lwp_device_port_t* lwp_get_port(lwp_device_t* d,uint8_t p);
 
 
 
+const char* lwp_get_port_string(lwp_device_t* d,uint8_t p);
+
+
+
 void lwp_setup_port(lwp_device_t* d,uint8_t p,uint8_t m,uint32_t di,uint8_t ne);
+
+
+
+void lwp_setup_port_mutiple(lwp_device_t* d,uint8_t p,uint8_t c,...);
 
 
 

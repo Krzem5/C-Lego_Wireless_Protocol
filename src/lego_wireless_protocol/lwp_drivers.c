@@ -13,6 +13,12 @@ float _map(float v,float aa,float ab,float ba,float bb){
 
 
 
+void _lwp_driver_base_motor_setup(lwp_device_t* d,uint8_t p){
+	lwp_setup_port_mutiple(d,p,2,1,3);
+}
+
+
+
 void _lwp_driver_led_light_init(lwp_device_t* d,uint8_t p){
 	lwp_setup_port(d,p,1,0,0);
 }
