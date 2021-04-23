@@ -5,7 +5,7 @@
 
 
 
-void _lwp_driver_base_motor_setup(lwp_device_t* d,uint8_t p);
+void _lwp_driver_base_motor_init(lwp_device_t* d,uint8_t p);
 
 
 
@@ -40,7 +40,7 @@ static lwp_driver_t LWP_DRIVERS[]={
 	{
 		0x0001,
 		"Motor",
-		_lwp_driver_base_motor_setup,
+		_lwp_driver_base_motor_init,
 		NULL,
 		NULL
 	},
@@ -173,7 +173,7 @@ static lwp_driver_t LWP_DRIVERS[]={
 	{
 		0x002f,
 		"XL Linear Motor",
-		_lwp_driver_base_motor_setup,
+		_lwp_driver_base_motor_init,
 		NULL,
 		NULL
 	},

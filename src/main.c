@@ -12,7 +12,6 @@ uint8_t dev_f_cb(lwp_device_data_t* dt){
 
 
 int main(int argc,const char** argv){
-	printf("%llu\n",sizeof(lwp_device_port_t));
 	lwp_device_list_t* dl=lwp_find_devices(5000,dev_f_cb);
 	for (uint32_t i=0;i<dl->l;i++){
 		printf("Device:\n  Address: %llx\n  Type: %.2hhx\n",(*(dl->dt+i))->addr,(*(dl->dt+i))->t);

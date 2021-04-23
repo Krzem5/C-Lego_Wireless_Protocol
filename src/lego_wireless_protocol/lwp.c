@@ -531,32 +531,32 @@ void lwp_setup_port(lwp_device_t* d,uint8_t p,uint8_t m,uint32_t di,uint8_t ne){
 
 
 
-void lwp_setup_port_mutiple(lwp_device_t* d,uint8_t p,uint8_t c,...){
+void lwp_setup_port_multiple(lwp_device_t* d,uint8_t p,uint8_t c,...){
 	uint8_t bf[3]={LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_COMBINED,p,0x02};
 	lwp_send_raw_data(d,bf,sizeof(bf));
 	va_list va;
 	va_start(va,c);
 	(d->ports.dt+p)->sm=0;
-	uint8_t* bf2=malloc((4+c)*sizeof(uint8_t));
-	*bf2=LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_COMBINED;
-	*(bf2+1)=p;
-	*(bf2+2)=0x01;
-	*(bf2+3)=0x00;
-	uint16_t bf2_sz=4+c;
+	uint8_t bf2[128]={LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_COMBINED,p,0x01,0x00};
+	uint16_t bf2_sz=4;
 	uint8_t* bf2p=bf2+4;
 	while (c){
 		uint8_t m=va_arg(va,uint8_t);
-		uint8_t di=va_arg(va,uint32_t);
+		uint32_t di=va_arg(va,uint32_t);
 		(d->ports.dt+p)->sm|=1<<m;
 		uint8_t bf3[8]={LWP_COMMAND_PORT_INPUT_FORMAT_SETUP_SINGLE,p,m,di&0xff,(di>>8)&0xff,(di>>16)&0xff,di>>24,va_arg(va,uint8_t)};
 		lwp_send_raw_data(d,bf3,sizeof(bf3));
 		c--;
-		*bf2p=0/***/;
-		bf2p++;
+		uint8_t dt_c=va_arg(va,uint8_t);
+		while (dt_c){
+			dt_c--;
+			*bf2p=(m<<4)|dt_c;
+			bf2p++;
+			bf2_sz++;
+		}
 	}
 	va_end(va);
 	lwp_send_raw_data(d,bf2,bf2_sz);
-	free(bf2);
 	bf[2]=0x03;
 	lwp_send_raw_data(d,bf,sizeof(bf));
 }

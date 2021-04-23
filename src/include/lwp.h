@@ -212,7 +212,7 @@ void lwp_setup_port(lwp_device_t* d,uint8_t p,uint8_t m,uint32_t di,uint8_t ne);
 
 
 
-void lwp_setup_port_mutiple(lwp_device_t* d,uint8_t p,uint8_t c,...);
+void lwp_setup_port_multiple(lwp_device_t* d,uint8_t p,uint8_t c,...);
 
 
 
